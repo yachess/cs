@@ -55,21 +55,44 @@ short* get_legal_moves(Pos p,int t){
             cnt++;
             continue; 
         }
+        j=i;
+        do j+=8; while(SAMEFILE(i,j) && p->bb[opp]&1L<<j);
+        if (INBOUNDS(j) && p->bb[t]&1L<<j && j-i>8){
+            moves[cnt]=i;
+            cnt++;
+            continue;
+        }
+        j=i;
+        do j-=8; while(SAMEFILE(i,j) && p->bb[opp]&1L<<j);
+        if (INBOUNDS(j) && p->bb[t]&1L<<j && i-j>8){
+            moves[cnt]=i;
+            cnt++;
+            continue; 
+        }
     }
+    printf("legal move size:%d\n",cnt);
     return moves;
+}
+
+int flip (Pos p,int sq){
 }
 
 int make(Pos p,int t,int sq){
     int i;
     short* lmoves =  get_legal_moves(p,t);
+    int moved = 0;
 
     for (i=0;i<32;i++){
-        if (*(lmoves+i)==-1) return 0;    
-        if (*(lmoves+i)!=1 && *(lmoves+i)==sq)
+        if (*(lmoves+i)==-1) break;    
+        if (*(lmoves+i)==sq){
             p->bb[t] |= 1L << sq;
+            print_pos(p);
+            flip(p,i);
+            moved = 1;
+        }
     }
     free(lmoves);
-    return 1;
+    return moved;
 }
 
 int main(int argc, char** argv){
