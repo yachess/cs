@@ -16,6 +16,4 @@
                 (print "Too small!"))
           ( (eq a *x)
                 (print "Correct!")
-                (return a))
-    )
-)
+                (return a))))
