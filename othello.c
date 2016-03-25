@@ -6,9 +6,23 @@
 #define SAMEFILE(a,b) (a%8 == b%8)
 #define INBOUNDS(a) (a>=0 && a<64)
 
+/* If this squares are  empty it is considered opening phase */
+
+const int SQ_VALUES[64]={
+    20,-10,10,0,0,10,-10,20,
+   -10,-15,0,0,0,0,-15,-10,
+    10,0,5,0,0,5,0,10,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    10,0,5,0,0,5,0,10,
+   -10,-15,0,0,0,0,-15,-10,
+    20,-10,10,0,0,10,-10,20,
+};
+
 typedef struct {
     unsigned long bb[2];   /* black/white bitboard */
-    short *l_moves;
+/*    short *l_moves; */
+    short l_moves[32];
     int lm_size;
 }*Pos,Position;
 
@@ -28,7 +42,7 @@ void print_pos(Pos p){
 
 void init_pos(Pos p){
     p->bb[0] = 0L; p->bb[1] = 0L;
-    p->l_moves = malloc(sizeof(short)*32);
+    /*p->l_moves = malloc(sizeof(short)*32);*/
     p->lm_size = -1;
 }
 
@@ -207,11 +221,8 @@ int count(Pos p,int t){
     return retval;
 }
 
-int get_comp_move(Pos p,int t){
-    return -1;
-}
-
-short get_random_move(Pos p,int t){
+/*
+short get_comp_move(Pos p,int t){
     int i;
     short mv=-1;
     int r;
@@ -219,7 +230,7 @@ short get_random_move(Pos p,int t){
     i=0;
     while (p->l_moves[i]!=-1 && i<32) i++;
     if (i>0){
-        r = rand()%i;
+        r = rand() % i;
         mv= p->l_moves[r];
         printf("choosing %d / %d value=%d\n",r,i,mv);
     }
@@ -227,6 +238,53 @@ short get_random_move(Pos p,int t){
         printf(" NO MOVE? \n");
     return mv;
 }
+*/
+
+int eval(Pos p,int t){
+    int i;
+    int op_mobility;
+    int retval=0;
+    for (i=0;i<64;i++)
+       if (p->bb[t] & 1L << i)
+           retval += SQ_VALUES[i];
+    
+    p->lm_size=-1;
+    calc_legal_moves(p,t^1);
+    op_mobility = p->lm_size;
+    p->lm_size=-1;
+    
+    retval += (50-op_mobility) * 10 +count(p,t);
+    
+    return retval;
+}
+/*
+ * returns computer move
+ * find lowest mobility for opponent player
+ */
+
+short get_comp_move(Pos p, int t){
+    int i,pts,max_pts = -9999;
+    Pos np;
+    short retval = -1;
+
+    calc_legal_moves(p,t);
+    for (i=0;i<p->lm_size;i++){
+        np = (Pos)malloc(sizeof(Position));
+        memcpy(np,p,sizeof(Position));
+        np->lm_size = -1;  /* init legal moves */
+
+        make(np,t,p->l_moves[i]);
+        /* pts = eval(np); */
+        pts = eval(np,t);
+        if (pts>max_pts){
+            max_pts = pts;
+            retval = p->l_moves[i];
+        }
+        free(np);
+    }
+    return retval;
+}
+
 /*
 int find_best_move(Pos p,int t,ply pl){
     int max = -10000;
@@ -245,7 +303,7 @@ int main(int argc, char** argv){
     int t=0;    /* turn (color)*/
     Pos p = malloc(sizeof(Position));
     short sq = -1;
-    short autop[] = {1,1};
+    short autop[] = {0,1};
     short passed = 0;
     short retval;
 
@@ -263,7 +321,7 @@ int main(int argc, char** argv){
     calc_legal_moves(p,t);
     while(1){
         if (autop[t]){
-            sq = get_random_move(p,t);
+            sq = get_comp_move(p,t);
            /*
             * if (sq!=-1)
                 retval = make(p,t,sq);
