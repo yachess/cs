@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <limits.h>
 
-#define SAMERANK(a,b) (a/8 == b/8)
-#define SAMEFILE(a,b) (a%8 == b%8)
 #define INBOUNDS(a) (a>=0 && a<64)
 
 /* If this squares are  empty it is considered opening phase */
@@ -24,6 +23,7 @@ typedef struct {
 /*    short *l_moves; */
     short l_moves[32];
     int lm_size;
+    int ply;
 }*Pos,Position;
 
 void print_pos(Pos p){
@@ -44,6 +44,7 @@ void init_pos(Pos p){
     p->bb[0] = 0L; p->bb[1] = 0L;
     /*p->l_moves = malloc(sizeof(short)*32);*/
     p->lm_size = -1;
+    p->ply = 0;
 }
 
 void calc_legal_moves(Pos p,int t){
@@ -63,7 +64,7 @@ void calc_legal_moves(Pos p,int t){
             continue;
         /* east */
         j=i;
-        do j++; while((i/8==j/8) && p->bb[opp]&1L<<j);
+        do j++; while(INBOUNDS(j) && (i/8==j/8) && p->bb[opp]&1L<<j);
         if ((i/8==j/8) && p->bb[t]&1L<<j && j-i>1){
             p->l_moves[cnt++]=i;
             continue;
@@ -87,7 +88,7 @@ void calc_legal_moves(Pos p,int t){
             continue;
         }
         j=i;
-        do j--; while((i/8==j/8) && p->bb[opp]&1L<<j);
+        do j--; while(INBOUNDS(j) && (i/8==j/8) && p->bb[opp]&1L<<j);
         if ((i/8==j/8) && p->bb[t]&1L<<j && i-j>1){
             p->l_moves[cnt++]=i;
             continue; 
@@ -111,9 +112,19 @@ void calc_legal_moves(Pos p,int t){
             continue;
         }
     }
-    printf("legal move size:%d\n",cnt);
-
     p->lm_size = cnt;
+}
+
+void randomize_moves(Pos p){
+    int r1,r2,t,i;
+    if (p->lm_size <0) return;
+    for (i=0;i<p->lm_size/2;i++){
+        r1 = rand() % p->lm_size;
+        r2 = rand() % p->lm_size;
+        if (r1==r2) continue;
+        t=p->l_moves[r1]; p->l_moves[r1]=p->l_moves[r2]; p->l_moves[r2]=t;
+    }
+
 }
 
 int flip (Pos p,int sq,int t){
@@ -204,6 +215,7 @@ int make(Pos p,int t,int sq){
             p->bb[t] |= 1L << sq;
             flip(p,sq,t);
             moved = 1;
+            p->ply++;
             break;
         }
     }
@@ -220,6 +232,7 @@ int count(Pos p,int t){
             retval++;  
     return retval;
 }
+
 
 /*
 short get_comp_move(Pos p,int t){
@@ -244,6 +257,9 @@ int eval(Pos p,int t){
     int i;
     int op_mobility;
     int retval=0;
+
+    if (p->ply > 50)
+        return count(p,t);
     for (i=0;i<64;i++)
        if (p->bb[t] & 1L << i)
            retval += SQ_VALUES[i];
@@ -253,7 +269,37 @@ int eval(Pos p,int t){
     op_mobility = p->lm_size;
     p->lm_size=-1;
     
-    retval += (50-op_mobility) * 10 +count(p,t);
+    retval -=op_mobility*2;
+    
+    return retval;
+}
+int eval2(Pos p,int t){
+    int i;
+    int op_mobility;
+    int retval=0;
+    for (i=0;i<64;i++)
+       if (p->bb[t] & 1L << i)
+           retval += SQ_VALUES[i]*2;
+        else if (p->bb[t^1] & 1L << i)
+            retval -= SQ_VALUES[i]*2;
+    p->lm_size=-1;
+    calc_legal_moves(p,t^1);
+    op_mobility = p->lm_size;
+    p->lm_size=-1;
+    retval += (50-op_mobility)  +count(p,t)*2-count(p,t^1)*2;
+    return retval;
+}
+int eval3(Pos p,int t){
+    int i;
+    int op_mobility;
+    int retval=0;
+    for (i=0;i<64;i++)
+       if (p->bb[t] & 1L << i)
+           retval += SQ_VALUES[i];
+       if (p->bb[t^1] & 1L << i)
+           retval -= SQ_VALUES[i];
+    
+    retval += count(p,t);
     
     return retval;
 }
@@ -263,11 +309,12 @@ int eval(Pos p,int t){
  */
 
 short get_comp_move(Pos p, int t){
-    int i,pts,max_pts = -9999;
+    int i,pts,max_pts = INT_MIN;
     Pos np;
     short retval = -1;
 
     calc_legal_moves(p,t);
+    randomize_moves(p); 
     for (i=0;i<p->lm_size;i++){
         np = (Pos)malloc(sizeof(Position));
         memcpy(np,p,sizeof(Position));
@@ -282,6 +329,72 @@ short get_comp_move(Pos p, int t){
         }
         free(np);
     }
+    return retval;
+}
+
+int evaluate(Pos p,int t,int depth){
+    int i,pts,max_pts = INT_MIN,min_pts= INT_MAX;
+    Pos np;
+    short retval = -1;
+    if (depth==0 || p->lm_size==0)
+        return eval(p,t);
+/*    calc_legal_moves(p,t); */
+    if (depth%2==0){
+        for (i=0;i<p->lm_size;i++){
+            np = (Pos)malloc(sizeof(Position));
+            memcpy(np,p,sizeof(Position));
+            np->lm_size = -1;
+
+            make(np,t,p->l_moves[i]);
+            pts = evaluate(np,t,depth-1);
+            if (pts>max_pts){
+                max_pts = pts;
+                retval = max_pts;
+            }
+            free(np);
+        }
+    } else {
+        for (i=0;i<p->lm_size;i++){
+            np = (Pos)malloc(sizeof(Position));
+            memcpy(np,p,sizeof(Position));
+            np->lm_size = -1;
+
+            make(np,t,p->l_moves[i]);
+            pts = evaluate(np,t,depth-1);
+            if (pts<min_pts){
+                min_pts = pts;
+                retval = min_pts;
+            }
+            free(np);
+        }
+    }
+    return retval;
+}
+
+short get_comp2_move(Pos p, int t){
+    int i,pts,max_pts = -9999;
+    Pos np;
+    short retval = -1;
+
+    calc_legal_moves(p,t);
+    randomize_moves(p);
+    for (i=0;i<p->lm_size;i++){
+        np = (Pos)malloc(sizeof(Position));
+        memcpy(np,p,sizeof(Position));
+        np->lm_size = -1;  /* init legal moves */
+
+        make(np,t,p->l_moves[i]);
+        /* pts = eval(np); */
+        calc_legal_moves(np,t^1);
+        pts = evaluate(np,t,5);
+        if (pts>max_pts){
+            max_pts = pts;
+            retval = p->l_moves[i];
+        }
+        free(np);
+
+    }
+    printf("Eval:%d\n",max_pts);
     return retval;
 }
 
@@ -303,7 +416,7 @@ int main(int argc, char** argv){
     int t=0;    /* turn (color)*/
     Pos p = malloc(sizeof(Position));
     short sq = -1;
-    short autop[] = {0,1};
+    short autop[] = {1,1};
     short passed = 0;
     short retval;
 
@@ -312,16 +425,19 @@ int main(int argc, char** argv){
 
     printf("size of pos:%lu\n",sizeof(Position));
 
-    p->bb[0] |= 1L<<27;
-    p->bb[1] |= 1L<<28;
-    p->bb[1] |= 1L<<35;
-    p->bb[0] |= 1L<<36;
+    p->bb[0] |= 1L<<28;
+    p->bb[1] |= 1L<<27;
+    p->bb[1] |= 1L<<36;
+    p->bb[0] |= 1L<<35;
     print_pos(p);
     
     calc_legal_moves(p,t);
     while(1){
         if (autop[t]){
-            sq = get_comp_move(p,t);
+            if (t==0)
+                sq = get_comp2_move(p,t);
+            else
+                sq = get_comp_move(p,t);
            /*
             * if (sq!=-1)
                 retval = make(p,t,sq);
@@ -345,7 +461,7 @@ int main(int argc, char** argv){
         }
         
         if(retval >0){
-            printf("played %d\n",sq);
+            printf("ply:%d,%d played %d\n",p->ply,t,sq);
             print_pos(p);
             t^=1;
             passed = 0;
@@ -353,14 +469,14 @@ int main(int argc, char** argv){
             p->lm_size = -1;
             calc_legal_moves(p,t);
         }else if(retval ==0)
-            printf("Illegal move!\n");
+            printf("Illegal move! sq=%d\n",sq);
         else if (retval==-1){
             printf("No move. Passed. tried %d\n",sq);
             t^=1;
             passed++;
             p->lm_size = -1;
             if(passed >=2){
-                printf("score:%d/%d\n",count(p,t),count(p,t^1));
+                printf("score:%d/%d\n",count(p,0),count(p,1));
                 break;
             }
         }
