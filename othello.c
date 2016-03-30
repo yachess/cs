@@ -377,7 +377,7 @@ short get_comp2_move(Pos p, int t){
     short retval = -1;
 
     calc_legal_moves(p,t);
-    randomize_moves(p);
+/*    randomize_moves(p);  */
     for (i=0;i<p->lm_size;i++){
         np = (Pos)malloc(sizeof(Position));
         memcpy(np,p,sizeof(Position));
@@ -398,25 +398,13 @@ short get_comp2_move(Pos p, int t){
     return retval;
 }
 
-/*
-int find_best_move(Pos p,int t,ply pl){
-    int max = -10000;
-    if (pl==0) 
-        return eval(p)
-        v = get_legal_moves(p,t)
-        np = copy(p);
-        for (all moves
-    }
-}
-*/
-
 int main(int argc, char** argv){
     char s[2];
     int x,y;    /* rank and file */
     int t=0;    /* turn (color)*/
     Pos p = malloc(sizeof(Position));
     short sq = -1;
-    short autop[] = {1,1};
+    short autop[] = {1,0};
     short passed = 0;
     short retval;
 
