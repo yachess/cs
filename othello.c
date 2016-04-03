@@ -506,7 +506,7 @@ int eval2(Pos p){
         i--;
     }
 
-    if (p->ply>51)
+    if (p->ply>49)
         return retval+count(p,0)-count(p,1);
 
     if (p->lm_size==0){
@@ -714,31 +714,40 @@ int minmax_search(Pos p,int color, int depth){
     return retval;
 }
 
-int minmax_search2(Pos p,int color, int depth){
+int minmax_search2(Pos p,int color, int depth, int alpha, int beta){
     int i,pts,max_pts = INT_MIN,min_pts= INT_MAX;
     Pos np;
     short retval = -1;
-    if (depth ==0) 
+    if (depth == 0) {
         if (color==0) return eval2(p);
-            else return -eval2(p);
+        else return -eval2(p);
+    }   
     calc_legal_moves(p); 
     if (p->lm_size ==0){
         if(p->pass_cnt)
             return eval2(p);
         
         p->t^=1;
-        pts = minmax_search2(p,color,depth-1);
+        pts = minmax_search2(p,color,depth-1,alpha,beta);
         if (depth%2==color^1){
             if (pts>max_pts){
                 max_pts = pts;
                 retval = max_pts;
             }
+            if (pts>alpha)
+                alpha = pts;
+            if (beta<=alpha)
+                return retval;
         }
         else{
             if (pts<min_pts){
                 min_pts = pts;
                 retval = min_pts;
             }
+            if (pts<beta)
+                beta = pts;
+            if (alpha>=beta)
+                return retval;
         }
     }
 
@@ -747,18 +756,26 @@ int minmax_search2(Pos p,int color, int depth){
         memcpy(np,p,sizeof(Position));
         np->lm_size = -1;
         make(np,p->l_moves[i]);
-        pts = minmax_search2(np,color,depth-1);
+        pts = minmax_search2(np,color,depth-1,alpha,beta);
         if (depth%2==0){    /* even depth number is maximizing player */
             if (pts>max_pts){
                 max_pts = pts;
                 retval = max_pts;
             }
+            if (pts>alpha)
+                alpha = pts;
+            if (beta<=alpha)
+                break;
         }
         else{
             if (pts<min_pts){
                 min_pts = pts;
                 retval = min_pts;
             }
+            if (pts<beta)
+                beta = pts;
+            if (alpha>=beta)
+                break;
         }
         free(np);
     }
@@ -800,7 +817,7 @@ short get_comp_move2(Pos p){
     int i,pts,max_pts = INT_MIN;
     Pos np;
     short retval = -1;
-    
+    int depth = (p->ply<51)?7:9; 
     calc_legal_moves(p);
     if(p->lm_size==0) return -1;
 
@@ -812,10 +829,7 @@ short get_comp_move2(Pos p){
 
         make(np,p->l_moves[i]);
         
-        if (np->ply<50)
-            pts = minmax_search2(np,p->t,3);
-        else
-            pts = minmax_search2(np,p->t,9);
+        pts = minmax_search2(np,p->t,depth,INT_MIN,INT_MAX);
         if (pts>max_pts){
             max_pts = pts;
             retval = p->l_moves[i];
@@ -851,7 +865,7 @@ int read_user_move(Pos p){
 
 int main(int argc, char** argv){
     Pos p = malloc(sizeof(Position));
-    short autop[] = {1,1};
+    short autop[] = {1,0};
     short retval;
     short sq;
 
@@ -860,10 +874,10 @@ int main(int argc, char** argv){
 
     printf("size of pos:%lu\n",sizeof(Position));
 
-    p->bb[0] |= 1L<<28;
-    p->bb[1] |= 1L<<27;
-    p->bb[1] |= 1L<<36;
-    p->bb[0] |= 1L<<35;
+    p->bb[1] |= 1L<<28;
+    p->bb[0] |= 1L<<27;
+    p->bb[0] |= 1L<<36;
+    p->bb[1] |= 1L<<35;
     print_pos(p);
     
     while(1){
