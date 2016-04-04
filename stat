@@ -1,0 +1,13 @@
+#!/bin/bash
+# 
+# Calculate ratio of occurence of first parameter string per all cases 
+# in a given file.
+# Usage: stat [file] [regex_exp1] [regex_exp2]
+# @author: Kim Youngjin  yachess@gmail.com
+
+case1=$(grep -e $2 $1 | wc -l)
+case2=$(grep -e $3 $1 | wc -l)
+case3=$(grep -e $4 $1 | wc -l)
+total=$(($case1+$case2+$case3))
+ratio=$(bc <<< "scale=4; $case1/$total * 100")
+echo "$ratio%($case1/$total)"
