@@ -250,12 +250,15 @@ int make(Pos p,int sq){
 }
 
 int count(Pos p,int t){
-    int i;
-    int retval=0;
-    for (i=0;i<64;i++)
-        if (p->bb[t] & 1L<<i)
-            retval++;  
-    return retval;
+    unsigned long i = p->bb[t];
+    i = i - ((i >> 1) & 0x5555555555555555UL);
+    i = (i & 0x3333333333333333UL) + ((i >> 2) & 0x3333333333333333UL);
+    return (int)((((i + (i >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
+}
+int bitcount(unsigned long i){
+    i = i - ((i >> 1) & 0x5555555555555555UL);
+    i = (i & 0x3333333333333333UL) + ((i >> 2) & 0x3333333333333333UL);
+    return (int)((((i + (i >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
 }
 
 short get_random_move(Pos p){
@@ -423,88 +426,40 @@ int eval2(Pos p){
         retval -= 20;
 
     /* bonus connected edge */
-    i=0;
-    while(p->bb[0] & 1L <<i && (i<8)){
+    for (i=0;p->bb[0] & 1L<<i && (i<8);i++)
         retval += 10;
-        i++;
-    }
-    i=7;
-    while(p->bb[0] & 1L<<i && (i>=0)){
+    for (i=7;p->bb[0] & 1L<<i && (i>=0);i--)
         retval += 10;
-        i--;
-    }
-    i=0;
-    while(p->bb[0] & 1L<<i && (i<64)){
+    for (i=0;p->bb[0] & 1L<<i && (i<64);i+=8)
         retval += 10;
-        i+= 8;
-    }
-    i=56;
-    while(p->bb[0] & 1L<<i && (i>=0)){
+    for (i=56;p->bb[0] & 1L<<i && (i>=0);i-=8)
         retval += 10;
-        i-=8;
-    }
-    i=7;
-    while(p->bb[0] & 1L<<i && (i<64)){
+    for (i=7;p->bb[0] & 1L<<i && (i<64);i+=8)
         retval += 10;
-        i+=8;
-    }
-    i=63;
-    while(p->bb[0] & 1L<<i && (i>=0)){
+    for (i=63;p->bb[0] & 1L<<i && (i>=0);i-=9)
         retval += 10;
-        i-=9;
-    }
-    i=56;
-    while(p->bb[0] & 1L<<i && (i<64)){
+    for (i=56;p->bb[0] & 1L<<i && (i<64);i++)
         retval += 10;
-        i++;
-    }
-    i=63;
-    while(p->bb[0] & 1L<<i && (i>=56)){
+    for(i=63;p->bb[0] & 1L<<i && (i>=56);i--)
         retval += 10;
-        i--;
-    }
-    
 
-    i=0;
-    while(p->bb[1] & 1L <<i && (i<8)){
+    for (i=0;p->bb[1] & 1L<<i && (i<8);i++)
         retval -= 10;
-        i++;
-    }
-    i=7;
-    while(p->bb[1] & 1L<<i && (i>=0)){
+    for (i=7;p->bb[1] & 1L<<i && (i>=0);i--)
         retval -= 10;
-        i--;
-    }
-    i=0;
-    while(p->bb[1] & 1L<<i && (i<64)){
+    for (i=0;p->bb[1] & 1L<<i && (i<64);i+=8)
         retval -= 10;
-        i+= 8;
-    }
-    i=56;
-    while(p->bb[1] & 1L<<i && (i>=0)){
+    for (i=56;p->bb[1] & 1L<<i && (i>=0);i-=8)
         retval -= 10;
-        i-=8;
-    }
-    i=7;
-    while(p->bb[1] & 1L<<i && (i<64)){
+    for (i=7;p->bb[1] & 1L<<i && (i<64);i+=8)
         retval -= 10;
-        i+=8;
-    }
-    i=63;
-    while(p->bb[1] & 1L<<i && (i>=0)){
+    for (i=63;p->bb[1] & 1L<<i && (i>=0);i-=9)
         retval -= 10;
-        i-=9;
-    }
-    i=56;
-    while(p->bb[1] & 1L<<i && (i<64)){
+    for (i=56;p->bb[1] & 1L<<i && (i<64);i++)
         retval -= 10;
-        i++;
-    }
-    i=63;
-    while(p->bb[1] & 1L<<i && (i>=56)){
+    for(i=63;p->bb[1] & 1L<<i && (i>=56);i--)
         retval -= 10;
-        i--;
-    }
+    
 
     if (p->ply>49)
         return retval+count(p,0)-count(p,1);
@@ -516,68 +471,9 @@ int eval2(Pos p){
     }
 
     /*  bonus edge */
-    for (i=0;i<8;i++)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=0;i<64;i+=8)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=7;i>=0;i--)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=7;i<64;i+=8)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=56;i>=0;i-=8)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=56;i<64;i++)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=63;i>=0;i-=8)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=63;i>=56;i--)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-
-    for (i=0;i<=27;i+=9)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=7;i<=28;i+=7)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=56;i<=35;i-=7)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-    for (i=63;i<=36;i-=9)
-        if (p->bb[0] & 1L<<i) 
-            retval += 5;
-        else if(p->bb[1] & 1L<<i)
-            retval -= 5;
-
+    retval += bitcount(p->bb[0]&0xFF818181818181FF)*10;
+    retval -= bitcount(p->bb[1]&0xFF818181818181FF)*10;
+    
     /* penalty for early adjacent corner square */
     if (empt & 1L<<0){
         if (p->bb[0] & 1L<<9)
@@ -817,7 +713,7 @@ short get_comp_move2(Pos p){
     int i,pts,max_pts = INT_MIN;
     Pos np;
     short retval = -1;
-    int depth = (p->ply<51)?7:9; 
+    int depth = (p->ply<51)?5:9; 
     calc_legal_moves(p);
     if(p->lm_size==0) return -1;
 
@@ -865,7 +761,7 @@ int read_user_move(Pos p){
 
 int main(int argc, char** argv){
     Pos p = malloc(sizeof(Position));
-    short autop[] = {1,0};
+    short autop[] = {1,1};
     short retval;
     short sq;
 
