@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <limits.h>
+#include <memory.h>
 
 #define INBOUNDS(a) (a>=0 && a<64)
 #define SQ_VALUE_FACTOR 1
@@ -9,29 +10,7 @@
 #define MOBILITY_FACTOR2 6
 #define COUNT_FACTOR 5
 #define CENTER_FACTOR 5
-/* If this squares are  empty it is considered opening phase */
-/*
-const int SQ_VALUES[64]={
-    20,-10,10,0,0,10,-10,20,
-   -10,-15,0,0,0,0,-15,-10,
-    10,0,5,0,0,5,0,10,
-    0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,
-    10,0,5,0,0,5,0,10,
-   -10,-15,0,0,0,0,-15,-10,
-    20,-10,10,0,0,10,-10,20,
-};
-*/
-const int SQ_VALUES[64]={
-    20,-10,1,1,1,1,-10,20,
-    -10,-20,0,0,0,0,-20,-10,
-    1,0,0,0,0,0,0,1,
-    1,0,0,0,0,0,0,1,
-    1,0,0,0,0,0,0,1,
-    1,0,0,0,0,0,0,1,
-    -10,-20,0,0,0,0,-20,-10,
-    20,-10,1,1,1,1,-10,20,
-};
+
 typedef struct {
     unsigned long bb[2];   /* black/white bitboard */
 /*    short *l_moves; */
@@ -249,13 +228,13 @@ int make(Pos p,int sq){
     return moved;
 }
 
-int count(Pos p,int t){
+inline int count(Pos p,int t){
     unsigned long i = p->bb[t];
     i = i - ((i >> 1) & 0x5555555555555555UL);
     i = (i & 0x3333333333333333UL) + ((i >> 2) & 0x3333333333333333UL);
     return (int)((((i + (i >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
 }
-int bitcount(unsigned long i){
+inline int bitcount(unsigned long i){
     i = i - ((i >> 1) & 0x5555555555555555UL);
     i = (i & 0x3333333333333333UL) + ((i >> 2) & 0x3333333333333333UL);
     return (int)((((i + (i >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
@@ -270,7 +249,6 @@ short get_random_move(Pos p){
 int eval(Pos p){
     int i;
     int retval=0;
-    int lm0,lm1;
 
     long empt = ~(p->bb[0]|p->bb[1]);
 
@@ -403,7 +381,6 @@ int eval(Pos p){
 int eval2(Pos p){
     int i;
     int retval=0;
-    int lm0,lm1;
 
     long empt = ~(p->bb[0]|p->bb[1]);
 
@@ -459,7 +436,7 @@ int eval2(Pos p){
         retval -= 10;
     for(i=63;p->bb[1] & 1L<<i && (i>=56);i--)
         retval -= 10;
-    
+   
 
     if (p->ply>49)
         return retval+count(p,0)-count(p,1);
@@ -474,62 +451,23 @@ int eval2(Pos p){
     retval += bitcount(p->bb[0]&0xFF818181818181FF)*10;
     retval -= bitcount(p->bb[1]&0xFF818181818181FF)*10;
     
-    /* penalty for early adjacent corner square */
+    /* penalty for early adjacent corner square 
+    */
     if (empt & 1L<<0){
-        if (p->bb[0] & 1L<<9)
-            retval -= 20;
-        else if (p->bb[1] & 1L<<9)
-            retval += 20;
-        if (p->bb[0] & 1L<<1)
-            retval -=20;
-        else if (p->bb[1] & 1L<<1)
-            retval += 20;
-        if (p->bb[0] & 1L<<8)
-            retval -=20;
-        else if (p->bb[1] & 1L<<8)
-            retval += 20;
+        retval -= bitcount(p->bb[0] & 0x40c0000000000000)*20;
+        retval += bitcount(p->bb[1] & 0x40c0000000000000)*20;
     } 
     if (empt & 1L<<7){
-        if (p->bb[0] & 1L<<14)
-            retval -=20;
-        else if (p->bb[1] & 1L<<14)
-            retval += 20;
-        if (p->bb[0] & 1L<<6)
-            retval -=20;
-        else if (p->bb[1] & 1L<<6)
-            retval += 20;
-        if (p->bb[0] & 1L<<15)
-            retval -=20;
-        else if (p->bb[1] & 1L<<15)
-            retval += 20;
+        retval -= bitcount(p->bb[0] & 0x0203000000000000)*20;
+        retval += bitcount(p->bb[1] & 0x0203000000000000)*20;
     }
     if (empt & 1L<<56){
-        if (p->bb[0] & 1L<<49)
-            retval -=20;
-        else if (p->bb[1] & 1L<<49)
-            retval += 20;
-        if (p->bb[0] & 1L<<57)
-            retval -=20;
-        else if (p->bb[1] & 1L<<57)
-            retval += 20;
-        if (p->bb[0] & 1L<<48)
-            retval -=20;
-        else if (p->bb[1] & 1L<<48)
-            retval += 20;
+        retval -= bitcount(p->bb[0] & 0x000000000000c040)*20;
+        retval += bitcount(p->bb[1] & 0x000000000000c040)*20;
     }    
     if (empt & 1L<<63){
-        if (p->bb[0] & 1L<<54)
-            retval -=20;
-        else if (p->bb[1] & 1L<<54)
-            retval += 20;
-        if (p->bb[0] & 1L<<62)
-            retval -=20;
-        else if (p->bb[1] & 1L<<62)
-            retval += 20;
-        if (p->bb[0] & 1L<<55)
-            retval -=20;
-        else if (p->bb[1] & 1L<<55)
-            retval += 20;
+        retval -= bitcount(p->bb[0] & 0x0000000000000302)*20;
+        retval += bitcount(p->bb[1] & 0x0000000000000302)*20;
     }    
         
     retval=retval*2;
@@ -562,9 +500,10 @@ int minmax_search(Pos p,int color, int depth){
     int i,pts,max_pts = INT_MIN,min_pts= INT_MAX;
     Pos np;
     short retval = -1;
-    if (depth ==0) 
+    if (depth ==0){ 
         if (color==0) return eval(p);
             else return -eval(p);
+    }
     calc_legal_moves(p); 
     if (p->lm_size ==0){
         if(p->pass_cnt)
@@ -572,7 +511,7 @@ int minmax_search(Pos p,int color, int depth){
         
         p->t^=1;
         pts = minmax_search(p,color,depth-1);
-        if (depth%2==color^1){
+        if (depth%2==(color^1)){
             if (pts>max_pts){
                 max_pts = pts;
                 retval = max_pts;
@@ -625,7 +564,7 @@ int minmax_search2(Pos p,int color, int depth, int alpha, int beta){
         
         p->t^=1;
         pts = minmax_search2(p,color,depth-1,alpha,beta);
-        if (depth%2==color^1){
+        if (depth%2==(color^1)){
             if (pts>max_pts){
                 max_pts = pts;
                 retval = max_pts;
