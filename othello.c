@@ -130,15 +130,14 @@ void init_pos(Pos p){
     p->t=0;
 }
 
-void calc_legal_moves(Pos p){
+void calc_legal_moves(Pos p,int t){
     int cnt = 0;
     int i,j,k;
-    int t= p->t;
-    int opp = p->t^1;  
+    int opp = t^1;  
     long empt;
  
     if (p->lm_size != -1) return;
-    empt = ~(p->bb[1]|p->bb[0]);
+    empt = ~(p->bb[0]|p->bb[1]);
 
     for (i=0;i<32;i++)
         *(p->l_moves+i) = -1;
@@ -157,18 +156,7 @@ void calc_legal_moves(Pos p){
     p->lm_size = cnt;
 }
 
-void randomize_moves(Pos p){
-    int r1,r2,t,i;
-    if (p->lm_size <0) return;
-    for (i=0;i<p->lm_size/2;i++){
-        r1 = rand() % p->lm_size;
-        r2 = rand() % p->lm_size;
-        if (r1==r2) continue;
-        t=p->l_moves[r1]; p->l_moves[r1]=p->l_moves[r2]; p->l_moves[r2]=t;
-    }
-}
-
-int flip (Pos p,int sq){
+void flip (Pos p,int sq){
     int i=sq,j,k,l;
     int t = p->t;
     int opp=t^1;
@@ -186,6 +174,32 @@ int flip (Pos p,int sq){
     }
 }
 
+void flipb (long *my,long *op,int sq){
+    int i=sq,j,k,l;
+
+    for (j=0;j<8;j++){
+        for (k=0;k<8&&(rays[i][j][k]!=-1)&&
+            (*op&1L<<rays[i][j][k]);k++);
+        if(k>0 && (rays[i][j][k]!=-1) && 
+            (*my&1L<<rays[i][j][k])){
+            for (l=0;l<k;l++){
+                *my |= 1L<<rays[i][j][l];
+                *op &= ~(1L<<rays[i][j][l]);
+            }
+        }
+    }
+}
+void randomize_moves(Pos p){
+    int r1,r2,t,i;
+    if (p->lm_size <0) return;
+    for (i=0;i<p->lm_size/2;i++){
+        r1 = rand() % p->lm_size;
+        r2 = rand() % p->lm_size;
+        if (r1==r2) continue;
+        t=p->l_moves[r1]; p->l_moves[r1]=p->l_moves[r2]; p->l_moves[r2]=t;
+    }
+}
+
 /*
  * returns 1 if move is successful
  *          0 if move isn't succesful
@@ -197,7 +211,7 @@ int make(Pos p,int sq){
     int moved = 0;
     int t=p->t;
 
-    calc_legal_moves(p);
+    calc_legal_moves(p,p->t);
 
     for (i=0;i<p->lm_size;i++){
         if (*(p->l_moves+i)==sq){
@@ -226,8 +240,20 @@ inline int bitcount(unsigned long i){
     return (int)((((i + (i >> 4)) & 0xF0F0F0F0F0F0F0FUL) * 0x101010101010101UL) >> 56);
 }
 
+int count_stable_disks(Pos p, int op){
+    int i,retval=0;
+    long opp=p->bb[op];
+    long me=p->bb[op^1];
+
+    p->lm_size=-1;
+    calc_legal_moves(p,op);
+    for (i=0;i<p->lm_size;i++)
+        flipb(&opp,&me,p->l_moves[i]);
+    return bitcount(me); 
+}
+
 short get_random_move(Pos p){
-    calc_legal_moves(p);
+    calc_legal_moves(p,p->t);
     if (p->lm_size<=0) return -1;
     randomize_moves(p); 
     return p->l_moves[0];
@@ -281,26 +307,8 @@ int eval2(Pos p){
     long empt = ~(p->bb[0]|p->bb[1]);
 
     /* bonus corner */
-        retval += bitcount(p->bb[0] & 0x8100000000000081L)*20;
-        retval -= bitcount(p->bb[1] & 0x8100000000000081L)*20;
-   /* 
-    if (p->bb[0] & 1L<<0)
-        retval +=20;
-    if (p->bb[0] & 1L<<7)
-        retval +=20;
-    if (p->bb[0] & 1L<<54)
-        retval += 20;
-    if (p->bb[0] & 1L <<63)
-        retval += 20;
-    if (p->bb[1] & 1L<<0)
-        retval -=20;
-    if (p->bb[1] & 1L<<7)
-        retval -=20;
-    if (p->bb[1] & 1L<<54)
-        retval -= 20;
-    if (p->bb[1] & 1L <<63)
-        retval -= 20;
-*/
+    retval += bitcount(p->bb[0] & 0x8100000000000081L)*20;
+    retval -= bitcount(p->bb[1] & 0x8100000000000081L)*20;
     /* bonus connected edge */
     for (i=0;p->bb[0] & 1L<<i && (i<8);i++)
         retval += 10;
@@ -337,7 +345,95 @@ int eval2(Pos p){
         retval -= 10;
    
 
-    if (p->ply>46) /* 46-48 was best */
+    if (p->ply>46) /* endgame evaluation 46-48 was best */
+        return retval+bitcount(p->bb[0])-bitcount(p->bb[1]);
+
+    if (p->lm_size==0){
+        if (p->t==0)
+            return INT_MIN;
+        return INT_MAX;
+    }
+
+    /*  bonus edge */
+    retval += bitcount(p->bb[0]&0xFF818181818181FF)*5;
+    retval -= bitcount(p->bb[1]&0xFF818181818181FF)*5;
+    
+    /* penalty for early adjacent corner square 
+    */
+    if (empt & 1L<<0){
+        retval -= bitcount(p->bb[0] & 0x40c0000000000000)*10;
+        retval += bitcount(p->bb[1] & 0x40c0000000000000)*10;
+    } 
+    if (empt & 1L<<7){
+        retval -= bitcount(p->bb[0] & 0x0203000000000000)*10;
+        retval += bitcount(p->bb[1] & 0x0203000000000000)*10;
+    }
+    if (empt & 1L<<56){
+        retval -= bitcount(p->bb[0] & 0x000000000000c040)*10;
+        retval += bitcount(p->bb[1] & 0x000000000000c040)*10;
+    }    
+    if (empt & 1L<<63){
+        retval -= bitcount(p->bb[0] & 0x0000000000000302)*10;
+        retval += bitcount(p->bb[1] & 0x0000000000000302)*10;
+    } 
+        
+
+    /* count stable disks */
+    retval+=(count_stable_disks(p,1)-count_stable_disks(p,0))*10;
+
+    if (p->t==0)
+        retval += p->lm_size*MOBILITY_FACTOR2;
+    else
+        retval -= p->lm_size*MOBILITY_FACTOR2;
+    return retval;
+}
+
+int eval3(Pos p){
+    int i;
+    int retval=0;
+
+    long empt = ~(p->bb[0]|p->bb[1]);
+
+    /* bonus corner */
+    retval += bitcount(p->bb[0] & 0x8100000000000081L)*20;
+    retval -= bitcount(p->bb[1] & 0x8100000000000081L)*20;
+    /* bonus connected edge */
+    for (i=0;p->bb[0] & 1L<<i && (i<8);i++)
+        retval += 10;
+    for (i=7;p->bb[0] & 1L<<i && (i>=0);i--)
+        retval += 10;
+    for (i=0;p->bb[0] & 1L<<i && (i<64);i+=8)
+        retval += 10;
+    for (i=56;p->bb[0] & 1L<<i && (i>=0);i-=8)
+        retval += 10;
+    for (i=7;p->bb[0] & 1L<<i && (i<64);i+=8)
+        retval += 10;
+    for (i=63;p->bb[0] & 1L<<i && (i>=0);i-=9)
+        retval += 10;
+    for (i=56;p->bb[0] & 1L<<i && (i<64);i++)
+        retval += 10;
+    for(i=63;p->bb[0] & 1L<<i && (i>=56);i--)
+        retval += 10;
+
+    for (i=0;p->bb[1] & 1L<<i && (i<8);i++)
+        retval -= 10;
+    for (i=7;p->bb[1] & 1L<<i && (i>=0);i--)
+        retval -= 10;
+    for (i=0;p->bb[1] & 1L<<i && (i<64);i+=8)
+        retval -= 10;
+    for (i=56;p->bb[1] & 1L<<i && (i>=0);i-=8)
+        retval -= 10;
+    for (i=7;p->bb[1] & 1L<<i && (i<64);i+=8)
+        retval -= 10;
+    for (i=63;p->bb[1] & 1L<<i && (i>=0);i-=9)
+        retval -= 10;
+    for (i=56;p->bb[1] & 1L<<i && (i<64);i++)
+        retval -= 10;
+    for(i=63;p->bb[1] & 1L<<i && (i>=56);i--)
+        retval -= 10;
+   
+
+    if (p->ply>46) /* endgame evaluation 46-48 was best */
         return retval+bitcount(p->bb[0])-bitcount(p->bb[1]);
 
     if (p->lm_size==0){
@@ -369,7 +465,9 @@ int eval2(Pos p){
         retval += bitcount(p->bb[1] & 0x0000000000000302)*20;
     }    
         
-    retval=retval*2;
+
+    /* count stable disks */
+    retval+=(count_stable_disks(p,1)-count_stable_disks(p,0))*10;
 
     if (p->t==0)
         retval += p->lm_size*MOBILITY_FACTOR2;
@@ -386,7 +484,7 @@ int minmax_search(Pos p,int color, int depth){
         if (color==0) return eval(p);
             else return -eval(p);
     }
-    calc_legal_moves(p); 
+    calc_legal_moves(p,p->t); 
     if (p->lm_size ==0){
         if(p->pass_cnt)
             return eval(p);
@@ -438,7 +536,7 @@ int minmax_search2(Pos p,int color, int depth, int alpha, int beta){
         if (color==0) return eval2(p);
         else return -eval2(p);
     }   
-    calc_legal_moves(p); 
+    calc_legal_moves(p,p->t); 
     if (p->lm_size ==0){
         if(p->pass_cnt)
             return eval2(p);
@@ -504,7 +602,7 @@ short get_comp_move(Pos p){
     Pos np;
     short retval = -1;
     
-    calc_legal_moves(p);
+    calc_legal_moves(p,p->t);
     if(p->lm_size==0) return -1;
 
     randomize_moves(p); 
@@ -534,7 +632,7 @@ short get_comp_move2(Pos p){
     Pos np;
     short retval = -1;
     int depth = (p->ply<51)?5:9; 
-    calc_legal_moves(p);
+    calc_legal_moves(p,p->t);
     if(p->lm_size==0) return -1;
 
     randomize_moves(p); 
@@ -562,7 +660,7 @@ int read_user_move(Pos p){
     short sq = -1;
     int i;
 
-    calc_legal_moves(p);
+    calc_legal_moves(p,p->t);
     if (p->lm_size==0) 
         return -1;
     while(1){    
@@ -600,7 +698,7 @@ int main(int argc, char** argv){
     print_pos(p);
     
     while(1){
-        calc_legal_moves(p);
+        calc_legal_moves(p,p->t);
         if (autop[p->t]){
             if (p->t==0)
                 sq = get_comp_move2(p);
