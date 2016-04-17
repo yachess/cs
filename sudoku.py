@@ -1,47 +1,69 @@
-# Sudoku number generation
-# Prints random sudoku table
-# Author Youngjin Kim  yachess@gmail.com
-
 import random
 
-# Group numbers 0..8 in which all number is unique remainder of 3
-# This sequence is to be used as a sequence of appearance of a number in 
-# a small 3x3 box. 
+board = [0 for _ in range(81)]
+# precalculate squares of each 9 3x3 box
+bx_sqs = []
+bx_sqs.append([0,1,2,9,10,11,18,19,20])
+bx_sqs.append(map(lambda x: x+3, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+6, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+27, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+27+3, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+27+6, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+54, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+54+3, bx_sqs[0]))
+bx_sqs.append(map(lambda x: x+54+6, bx_sqs[0]))
 
-l=[[0,1,2],[3,4,5],[6,7,8]]
+def get_available_squares(n,box):
+# Returns available squares of n in a 3x3box
+    global board
+    global bx_sqs
 
-# Then suffle group and numbers in them
-for i in range(10):
-    r1=random.randint(0,2)
-    r2=random.randint(0,2)
-    l[r1],l[r2] = l[r2],l[r1]
-for i in range(3):
-    for j in range(10):
-        r1=random.randint(0,2)
-        r2=random.randint(0,2)
-        l[i][r1],l[i][r2] = l[i][r2],l[i][r1]
+    if box>8:
+        return []
+    sqs = []
+    for sq in bx_sqs[box]:
+        overlap = False 
+        for i,v in enumerate(board):
+            if v==n and (i%9==sq%9 or i//9==sq//9):
+                overlap = True
+        if board[sq]==0 and not overlap:
+            sqs.append(sq)
+    return sqs
 
-# Flatten the list
-l=(sum(l,[])) 
+def legal_board(board):
+    return True
 
 def print_board(board):
-    for i,sq in enumerate(board):
-        print(sq),
+    for i,v in enumerate(board):
+        print(v),
         if i%9==8:
             print("")
 
-# Place numbers at the board in order of above indices
-# relative to bounding box in vertical order.
-board=[0 for _ in range(81)]
+def fill(num,box):
+# Recursively fill the squares in a box with given number
+    global board
+    if box>8:
+        if num==9:    # Done
+            return True
+        else:           # fill next number
+            num+=1
+            box=0
+    found = False
+    sqs = get_available_squares(num,box) 
+    random.shuffle(sqs)
+    for sq in sqs:
+        board[sq] = num
+        if fill(num,box+1):
+            found = True
+            break
+        else:
+            board[sq] = 0
+    return found
 
-for n in range(1,10):
-    for i,s in enumerate(l):
-        # convert into global coordinates then to square
-        x = i*3//9*3 + s%3
-        y = i*3%9 + s//3
-        sq = y*9+x
-        board[sq]=n
-    # rotate the sequence
-    l=l[1:]+l[:1]
+if fill(1,0):
+    print_board(board)
+    print("Success")
+else:
+    print("No Solution")
+    
 
-print_board(board)
