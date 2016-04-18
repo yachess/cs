@@ -1,6 +1,15 @@
-import random
+import sys,random
 
 board = [0 for _ in range(81)]
+constraints=[ 0,0,8,0,0,4,0,9,0,
+        0,0,0,0,8,1,0,5,4,
+        0,2,0,0,0,0,0,0,1,
+        2,0,7,0,5,0,0,0,0,
+        8,3,0,0,1,0,0,0,0,
+        0,4,0,0,9,7,0,0,0,
+        0,0,0,0,0,0,0,0,6,
+        0,6,0,0,0,3,0,4,0,
+        7,0,5,0,0,0,0,0,0]
 # precalculate squares of each 9 3x3 box
 bx_sqs = []
 bx_sqs.append([0,1,2,9,10,11,18,19,20])
@@ -15,13 +24,14 @@ bx_sqs.append(map(lambda x: x+54+6, bx_sqs[0]))
 
 def get_available_squares(n,box):
 # Returns available squares of n in a 3x3box
-    global board
-    global bx_sqs
+    global board, constraints,bx_sqs
 
     if box>8:
         return []
     sqs = []
     for sq in bx_sqs[box]:
+#       if constraints[sq]==n:  # Solver code
+#           return [sq]
         overlap = False 
         for i,v in enumerate(board):
             if v==n and (i%9==sq%9 or i//9==sq//9):
@@ -30,14 +40,11 @@ def get_available_squares(n,box):
             sqs.append(sq)
     return sqs
 
-def legal_board(board):
-    return True
-
 def print_board(board):
+    print("")
     for i,v in enumerate(board):
         print(v),
-        if i%9==8:
-            print("")
+        if i%9==8: print("")
 
 def fill(num,box):
 # Recursively fill the squares in a box with given number
@@ -48,6 +55,7 @@ def fill(num,box):
         else:           # fill next number
             num+=1
             box=0
+#   print_board(board)
     found = False
     sqs = get_available_squares(num,box) 
     random.shuffle(sqs)
@@ -55,10 +63,14 @@ def fill(num,box):
         board[sq] = num
         if fill(num,box+1):
             found = True
-            break
+            return True
         else:
             board[sq] = 0
-    return found
+            
+
+#if(len(sys.argv)==2)
+
+board = [0 for _ in range(81)]
 
 if fill(1,0):
     print_board(board)
