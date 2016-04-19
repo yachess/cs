@@ -46,13 +46,13 @@ def print_board(board):
         print(v),
         if i%9==8: print("")
 
-num_try = 0
-def fill(num):
+def fill(n):
 # Recursively fill the squares in a box with given number
-    global board,num_try
+    global board,num_try,occ
     
-    if num==10:      # Done
+    if n==9:      # Done
         return True
+    num=occ[n][0]
     num_try += 1
     result=False
     for sq0 in get_avail_sqrs(num,0):
@@ -73,7 +73,7 @@ def fill(num):
                                     board[sq7] = num
                                     for sq8 in get_avail_sqrs(num,8):
                                         board[sq8] = num
-                                        result = fill(num+1)
+                                        result = fill(n+1)
                                         if result:
                                             return True
                                         board[sq8] = 0
@@ -100,7 +100,17 @@ if len(constraints)!= 81:
     print(" count of numbers must be 81")
     quit()
 
-if fill(1):
+num_try = 0
+#occurence table to sort by frequency
+occ = [[i,0] for i in range(1,10)]
+for v in constraints:
+    if v!= 0:
+        occ[v-1][1]+=1
+# Sort by second element
+occ.sort(key=lambda x: -x[1])
+
+print(occ)
+if fill(0):
     print("")
     print_board(board)
     print("Found solution after %d trial." % (num_try))
