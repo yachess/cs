@@ -2,41 +2,50 @@ import sys,random
 
 board = [0 for _ in range(81)]
 
-# precalculate squares of each 9 3x3 box
-bx_sqs=[[0,1,2,9,10,11,18,19,20]]
-bx_sqs.append(map(lambda x: x+3, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+6, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+27, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+27+3, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+27+6, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+54, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+54+3, bx_sqs[0]))
-bx_sqs.append(map(lambda x: x+54+6, bx_sqs[0]))
+# Precalculate squares of each 9 3x3 box
+bx_sqrs=[[0,1,2,9,10,11,18,19,20]]
+bx_sqrs.append(map(lambda x: x+3, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+6, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+27, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+27+3, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+27+6, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+54, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+54+3, bx_sqrs[0]))
+bx_sqrs.append(map(lambda x: x+54+6, bx_sqrs[0]))
 
 def get_avail_sqrs(n,box):
-# Returns available squares of n in a 3x3box
-    global board, constraints,bx_sqs
-
-    if box>8:
-        return []
+    global board,constraints,bx_sqrs
+    
+    num_sqrs = []
     sqs = []
+
+    # Collect number squares
+    pos = -1
+    try:
+        while 1:
+            pos = board.index(n,pos+1)
+            num_sqrs.append(pos)
+    except ValueError:
+        pass
+    # Check if constraints square exists in box
     constraints_sq = -1
-    for sq in bx_sqs[box]:
+    for sq in bx_sqrs[box]:
         if constraints[sq]==n:
             constraints_sq = sq
-    
-    for sq in bx_sqs[box]:
-        overlap = False 
-        for i,v in enumerate(board):
-            if v==n and i != sq and (i%9==sq%9 or i//9==sq//9):
-                overlap = True
-        if board[sq]==0 and (constraints[sq]==0 or constraints[sq]==n) and not overlap:
+    # Filter squares that doesn't overlap rows or columns
+    for sq in bx_sqrs[box]:
+        if board[sq]!=0:
+            continue
+        conflict = False
+        for nsq in num_sqrs:
+            if sq%9 == nsq%9 or sq//9 == nsq//9:
+                conflict = True
+                break
+        if not conflict and \
+            (constraints[sq]==0 or constraints[sq]==n):
             sqs.append(sq)
     if constraints_sq != -1:
-        if constraints_sq in sqs:
-            return [constraints_sq]
-        else:
-            return []
+        return [constraints_sq] if constraints_sq in sqs else []
     return sqs
 
 def print_board(board):
@@ -47,7 +56,6 @@ def print_board(board):
 def fill(n,box):
 # Recursively fill the squares in a box with given number
     global board,num_try,occ
-    
     if box==9:
         box=0
         n+=1
@@ -56,7 +64,8 @@ def fill(n,box):
     num=occ[n][0]
     num_try += 1
     result=False
-    for sq in get_avail_sqrs(num,box):
+    l= get_avail_sqrs(num,box)
+    for sq in l:
         board[sq] = num
         result = fill(n,box+1)
         if result:
@@ -87,11 +96,10 @@ for v in constraints:
 # Sort by second element
 occ.sort(key=lambda x: -x[1])
 
-print(occ)
 if fill(0,0):
     print("")
     print_board(board)
-    print("Found solution after %d trial." % (num_try))
+    print("Found solution after %d tries." % (num_try))
 else:
     print("No Solution")
     
