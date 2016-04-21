@@ -17,7 +17,6 @@ def get_avail_sqrs(n,box):
     global board,constraints,bx_sqrs
     
     num_sqrs = []
-    sqs = []
 
     # Collect number squares
     pos = -1
@@ -32,21 +31,26 @@ def get_avail_sqrs(n,box):
     for sq in bx_sqrs[box]:
         if constraints[sq]==n:
             constraints_sq = sq
-    # Filter squares that doesn't overlap rows or columns
-    for sq in bx_sqrs[box]:
-        if board[sq]!=0:
-            continue
+    # Filter squares that doesn't overlap rows or columns with num sqrs
+    if constraints_sq == -1:
+        for sq in bx_sqrs[box]:
+            if board[sq]!=0:
+                continue
+            conflict = False
+            for nsq in num_sqrs:
+                if sq%9 == nsq%9 or sq//9 == nsq//9:
+                    conflict = True
+                    break
+            if not conflict and constraints[sq]==0:
+                yield sq
+    else:
         conflict = False
         for nsq in num_sqrs:
-            if sq%9 == nsq%9 or sq//9 == nsq//9:
+            if constraints_sq%9 == nsq%9 or constraints_sq//9 == nsq//9:
                 conflict = True
                 break
-        if not conflict and \
-            (constraints[sq]==0 or constraints[sq]==n):
-            sqs.append(sq)
-    if constraints_sq != -1:
-        return [constraints_sq] if constraints_sq in sqs else []
-    return sqs
+        if not conflict:
+            yield constraints_sq
 
 def print_board(board):
     for i,v in enumerate(board):
@@ -55,17 +59,17 @@ def print_board(board):
 
 def fill(n,box):
 # Recursively fill the squares in a box with given number
-    global board,num_try,occ
+    global board,num_try,freq_table
     if box==9:
         box=0
         n+=1
     if n==9:
         return True
-    num=occ[n][0]
+    num=freq_table[n][0]
     num_try += 1
     result=False
-    l= get_avail_sqrs(num,box)
-    for sq in l:
+    gen= get_avail_sqrs(num,box)
+    for sq in gen:
         board[sq] = num
         result = fill(n,box+1)
         if result:
@@ -88,18 +92,18 @@ if len(constraints)!= 81:
     quit()
 
 num_try = 0
-#occurence table to sort by frequency
-occ = [[i,0] for i in xrange(1,10)]
+#freq_tableurence table to sort by frequency
+freq_table = [[i,0] for i in xrange(1,10)]
 for v in constraints:
     if v!= 0:
-        occ[v-1][1]+=1
-# Sort by second element
-occ.sort(key=lambda x: -x[1])
+        freq_table[v-1][1]+=1
+# Sort by second element in descending order
+freq_table.sort(key=lambda x: x[1],reverse=True)
 
 if fill(0,0):
     print("")
     print_board(board)
-    print("Found solution after %d tries." % (num_try))
+    print("Found solution in %d tries." % (num_try))
 else:
     print("No Solution")
     
