@@ -8,16 +8,16 @@ fib: fibonacci
 guessnum: generate random number and user guesses the number
 nprime: how many primes in given number
 qsort: quicksort of random 100 numbers
+validcard: check if given card number is valid
 hanoi: Hanoi tower solver using recursive algorithm
 sudokugen: Sudoku table generation
 sudokusol: Sudoku solver
 genmaze: generate maze and draw
 othello: othello solver using bitboards
 eightq: eight queen problem
-Expression calculator
-some problems using ST/AVL tree
+* Expression calculator
+* some problems using ST/AVL tree
 rubik: 2x2x2 rubik's puzzle solver using BFS
-some problems using concurrency
 
 ============================
 II. Language listing
@@ -32,6 +32,10 @@ Julia
 Haskell
 Erlang
 
+============================
+III. further studies
+
+some problem requiring concurrency.
 
 
 
