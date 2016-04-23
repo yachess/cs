@@ -14,10 +14,10 @@ bx_sqrs.append(map(lambda x: x+54+3, bx_sqrs[0]))
 bx_sqrs.append(map(lambda x: x+54+6, bx_sqrs[0]))
 
 def get_avail_sqrs(n,box):
+    """ Yields available squares of a number in a given box """
     global board,constraints,bx_sqrs
     
     num_sqrs = []
-
     # Collect number squares
     pos = -1
     try:
@@ -58,7 +58,7 @@ def print_board(board):
         if i%9==8: print("")
 
 def fill(n,box):
-# Recursively fill the squares in a box with given number
+    """ Recursively fill the squares in a box with given number """
     global board,num_try,freq_table
     if box==9:
         box=0
@@ -67,15 +67,12 @@ def fill(n,box):
         return True
     num=freq_table[n][0]
     num_try += 1
-    result=False
     gen= get_avail_sqrs(num,box)
     for sq in gen:
         board[sq] = num
-        result = fill(n,box+1)
-        if result:
+        if fill(n,box+1):
             return True
-        else:
-            board[sq] = 0
+        board[sq] = 0
     return False
 
 if len(sys.argv)!=2:

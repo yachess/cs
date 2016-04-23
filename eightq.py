@@ -1,7 +1,10 @@
-# Eight Queen puzzle using backtracking
-# @ yachess@gmail.com Youngjin Kim
+# Eight Queen puzzle solver using backtracking
+# Prints random eight queen position
+# Author: Youngjin Kim yachess@gmail.com 
 
 import sys
+import random
+
 queens = []
 
 def can_place_queen_at(sq):
@@ -17,7 +20,10 @@ def solve(row):
     if row==8:
         return True
     found = False
-    for i in range(8):
+   
+    l = range(8)
+    random.shuffle(l)
+    for i in l:
         sq = row*8+i
         if can_place_queen_at(sq):
             queens.append(sq)
@@ -25,17 +31,13 @@ def solve(row):
                 found = True
             else:
                 queens.pop()
-    if not found:
-        return False
-    return True
+    if found:
+        return True
+    return False
 
 def print_queens():
-    b=0L
-    for q in queens:
-        b |= 1L<<q
-    for i in range(64):
-        s = ".Q" if b&1L<<i else ". "
-        sys.stdout.write(s)
+    for i in xrange(64):
+        sys.stdout.write(".Q" if i in queens else ". ")
         if i%8==7: 
             sys.stdout.write("\n")
 

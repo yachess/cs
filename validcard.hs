@@ -1,3 +1,4 @@
+{- Inspect valid credit card number -}
 evensum :: (Integral a) => [a] -> a
 evensum [] = 0
 evensum (x:y:xs)
