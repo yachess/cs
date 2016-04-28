@@ -53,8 +53,12 @@ class KochFrame(tk.Frame):
 n = 0
 def step():
     global n,f
-    n = (n+1)%6
-    l = kochrize([(0,300),(600,300)])
+    
+    l=[]
+    l.append((50,150))
+    l.append((550,150))
+    l.append((300,580))
+    l.append((50,150))
 
     for i in range(n):
         l = kochrize(l)
@@ -64,7 +68,8 @@ def step():
         if old_pt != None:
             f.add_line(old_pt, pt)
         old_pt = pt
-    threading.Timer(1.0,step).start()
+    n = (n+1)%6
+    threading.Timer(3.0,step).start()
 
 def kochrize(ls):
     new_l = []
