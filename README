@@ -15,6 +15,7 @@ sudokusol: Sudoku solver
 genmaze: generate maze and draw
 othello: othello solver using bitboards
 eightq: eight queen problem
+koch: draw koch curve (fractal)
 * Expression calculator
 * some problems using ST/AVL tree
 rubik: 2x2x2 rubik's puzzle solver using BFS
