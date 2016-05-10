@@ -17,8 +17,8 @@ othello: othello solver using bitboards
 eightq: eight queen problem
 koch: draw koch curve 
 sierpinski: draw sierpinski's triangle 
-* Expression calculator
-* some problems using ST/AVL tree
+Binary tree
+AVL tree
 rubik: 2x2x2 rubik's puzzle solver using BFS
 
 ============================
