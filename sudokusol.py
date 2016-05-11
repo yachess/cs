@@ -30,6 +30,7 @@ def get_avail_sqrs(n,box):
     for sq in bx_sqrs[box]:
         if constraints[sq]==n:
             constraints_sq = sq
+            break;
 
     # Filter squares that don't overlap rows or columns with num sqrs
     if constraints_sq == -1:
