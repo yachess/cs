@@ -22,6 +22,7 @@ const int bx_sqrs[9][9] = {
 number_p freq_table;
 /* constraints means squares that are given as problem */
 int constraints[81];
+int num_tries=0;
 
 void b_sort(number_p f_table){
     int i,j;
@@ -33,8 +34,6 @@ void b_sort(number_p f_table){
             f_table[i] = f_table[j];
             f_table[j] = tmp;
         }
-    for (i=0;i<9;i++)
-        printf("%d-%d\n",f_table[i].cnt,f_table[i].num);
 }
     
 void print_board(int* board){
@@ -45,6 +44,15 @@ void print_board(int* board){
         if (i%9==8)
             printf("\n");
     }
+}
+
+void print_sqrs(int* sqrs){
+    int i=0;
+    while (i<9 && sqrs[i]!=-1){
+        printf("%d ",sqrs[i]);
+        i++;
+    }
+    printf("\n");
 }
 
 int member(int n, int* lst){
@@ -60,9 +68,11 @@ void get_avail_sqrs(int* board, int num, int bx, int *avail_sqrs){
     int i, constraints_sq, idx;
     int num_rows[9] = {-1,-1,-1,-1,-1,-1,-1,-1,-1};
     int num_cols[9] = {-1,-1,-1,-1,-1,-1,-1,-1,-1};
+    int sq;
 
     for (i=0; i<9; i++)
         avail_sqrs[i] = -1;
+
     
     idx = 0;
     for(i=0; i<81; i++){
@@ -72,14 +82,12 @@ void get_avail_sqrs(int* board, int num, int bx, int *avail_sqrs){
             idx++;
         }
     }
-    for (i=0;i<9;i++)
-        printf("r:%d-c:%d,",num_rows[i],num_cols[i]);
-    printf("\n");
+
     constraints_sq = -1;
     i=0;
     while( bx_sqrs[bx][i] != -1 && i < 9 ){
         if (constraints[bx_sqrs[bx][i]] == num){
-            constraints_sq = constraints[bx_sqrs[bx][i]];
+            constraints_sq = bx_sqrs[bx][i];
             break;
         }
         i++;
@@ -89,11 +97,11 @@ void get_avail_sqrs(int* board, int num, int bx, int *avail_sqrs){
         idx=0;
         i=0;
         while ( bx_sqrs[bx][i] !=-1 && i < 9){
-            if (board[bx_sqrs[bx][i]] != 0) 
-                continue;
-            if (!(member(bx_sqrs[bx][i]%9, num_cols)) && \
-                !(member(bx_sqrs[bx][i]/9, num_rows))){
-                avail_sqrs[idx] = bx_sqrs[bx][i];
+            sq = bx_sqrs[bx][i];
+            if (board[sq] == 0 && constraints[sq] == 0 &&\
+                !(member(sq%9, num_cols)) && \
+                !(member(sq/9, num_rows))){
+                avail_sqrs[idx] = sq;
                 idx++;
             }
             i++;
@@ -115,7 +123,6 @@ int solve(int* board, int n, int bx){
     }
     if (n==9) {
         print_board(board);
-        return 1;
     }
     num = freq_table[n].num;
     get_avail_sqrs(board,num,bx,avail_sqrs);
@@ -123,7 +130,6 @@ int solve(int* board, int n, int bx){
     while(avail_sqrs[i]!=-1 && i<9){
         sq = avail_sqrs[i];
         board[sq] = num;
-        print_board(board);
         if (solve(board, n, bx + 1))
             return 1;
         board[sq] = 0;
@@ -152,7 +158,6 @@ int main (int argc, char** argv){
     for (i=0;i<81;i++){
        constraints[i] = argv[1][i]-'0'; 
     }
-    print_board(constraints);
     /* frequency table */
     for (i=0;i<9;i++){
         freq_table[i].num = i+1;
@@ -166,6 +171,5 @@ int main (int argc, char** argv){
     /*b_sort(freq_table);*/
     
     solve(board,0,0);  
-    printf ("test");
     return 0;        
 }

@@ -1,6 +1,6 @@
 import sys,random
 
-board = [0 for _ in range(81)]
+board = [0 for _ in xrange(81)]
 
 # Precalculate squares of each 9 3x3 box
 bx_sqrs = [[0,1,2,9,10,11,18,19,20],
@@ -35,10 +35,8 @@ def get_avail_sqrs(n,box):
     # Filter squares that don't overlap rows or columns with num sqrs
     if constraints_sq == -1:
         for sq in bx_sqrs[box]:
-            if board[sq]!=0:
-                continue
-            if not (sq%9 in num_cols or sq//9 in num_rows) \
-                and constraints[sq]==0:
+            if board[sq]==0 and constraints[sq]==0 and \
+                    not sq%9 in num_cols and not sq//9 in num_rows:
                 yield sq
     else:
         if not (constraints_sq%9 in num_cols \
